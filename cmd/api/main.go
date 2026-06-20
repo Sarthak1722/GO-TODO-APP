@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/Sarthak1722/todo_app/internal/handlers"
 	"github.com/Sarthak1722/todo_app/internal/logger"
@@ -10,6 +11,7 @@ import (
 	"github.com/Sarthak1722/todo_app/internal/store"
 	"github.com/Sarthak1722/todo_app/internal/validator"
 	"github.com/gofiber/fiber/v3"
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -31,6 +33,13 @@ func main() {
 	// Initialize Fiber app
 	app := fiber.New()
 
+	err := godotenv.Load(".env")
+	if err!=nil{
+		log.Fatal("Error loading .env file")
+	}
+
+	PORT:=os.Getenv("PORT")
+
 	// Middleware
 	app.Use(middleware.GetRequestID())
 	app.Use(middleware.RequestLogger())
@@ -51,5 +60,5 @@ func main() {
 	app.Patch("/api/todos/:id", todoHandler.PatchTodoByID)
 
 	// Start server
-	log.Fatal(app.Listen(":3000"))
+	log.Fatal(app.Listen(":"+PORT))
 }

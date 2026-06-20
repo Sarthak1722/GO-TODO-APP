@@ -2,6 +2,7 @@ package store
 
 import (
 	"slices"
+	"sync"
 
 	"github.com/Sarthak1722/todo_app/internal/models"
 )
@@ -18,6 +19,7 @@ type Store interface {
 // InMemoryStore implements the Store interface using in-memory storage
 type InMemoryStore struct {
 	todos []models.Todo
+	mu    sync.RWMutex
 }
 
 // NewInMemoryStore creates a new in-memory store instance
@@ -28,6 +30,8 @@ func NewInMemoryStore() *InMemoryStore {
 }
 
 func (s *InMemoryStore) GetAllTodos() []models.Todo {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.todos
 }
 
@@ -41,6 +45,8 @@ func (s *InMemoryStore) GetTodoByID(id int) *models.Todo {
 }
 
 func (s *InMemoryStore) CreateTodo(todo models.Todo) models.Todo {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	id := 1
 	if len(s.todos) > 0 {
 		id = s.todos[len(s.todos)-1].ID + 1
@@ -51,6 +57,8 @@ func (s *InMemoryStore) CreateTodo(todo models.Todo) models.Todo {
 }
 
 func (s *InMemoryStore) DeleteTodoByID(id int) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	originalLen := len(s.todos)
 	s.todos = slices.DeleteFunc(s.todos, func(e models.Todo) bool {
 		return e.ID == id
@@ -59,11 +67,13 @@ func (s *InMemoryStore) DeleteTodoByID(id int) bool {
 }
 
 func (s *InMemoryStore) PatchTodoByID(id int, todo models.Todo) *models.Todo {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	for i, existingTodo := range s.todos {
 		if existingTodo.ID == id {
 			todo.ID = existingTodo.ID
-			if todo.Body==""{
-				todo.Body=existingTodo.Body
+			if todo.Body == "" {
+				todo.Body = existingTodo.Body
 			}
 			s.todos[i] = todo
 			return &s.todos[i]
