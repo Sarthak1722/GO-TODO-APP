@@ -29,16 +29,18 @@ func (h *TodoHandler) CreateTodo(c fiber.Ctx) error {
 			Str("requestID", requestID).
 			Err(err).
 			Msg("bad request body")
+
 		return utils.RespondError(c, fiber.StatusBadRequest, "invalid request body", nil)
 	}
 
-	// Service handles validation
-	createdTodo, validationErrs := h.service.CreateTodo(todoReq)
+	createdTodo, validationErrs := h.service.CreateTodo(c.Context(), todoReq)
+
 	if validationErrs != nil {
 		logger.Log.Error().
 			Str("requestID", requestID).
 			Interface("validation_errors", validationErrs).
 			Msg("validation failed")
+
 		return utils.RespondValidationError(c, validationErrs)
 	}
 
@@ -60,15 +62,18 @@ func (h *TodoHandler) GetTodoByID(c fiber.Ctx) error {
 			Str("requestID", requestID).
 			Str("id_param", idStr).
 			Msg("invalid todo id")
+
 		return utils.RespondError(c, fiber.StatusBadRequest, "invalid todo id", nil)
 	}
 
-	todo := h.service.GetTodoByID(id)
+	todo, _ := h.service.GetTodoByID(c.Context(), id)
+
 	if todo == nil {
 		logger.Log.Warn().
 			Str("requestID", requestID).
 			Int("todo_id", id).
 			Msg("todo not found")
+
 		return utils.RespondError(c, fiber.StatusNotFound, "todo not found", nil)
 	}
 
@@ -77,7 +82,11 @@ func (h *TodoHandler) GetTodoByID(c fiber.Ctx) error {
 
 func (h *TodoHandler) GetAllTodos(c fiber.Ctx) error {
 	requestID := c.Locals("request_id").(string)
-	allTodos := h.service.GetAllTodos()
+
+	allTodos, err := h.service.GetAllTodos(c.Context())
+	if err != nil {
+		return utils.RespondError(c, fiber.StatusInternalServerError, "could not fetch todos", nil)
+	}
 
 	logger.Log.Info().
 		Str("requestID", requestID).
@@ -97,15 +106,18 @@ func (h *TodoHandler) DeleteTodoByID(c fiber.Ctx) error {
 			Str("requestID", requestID).
 			Str("id_param", idStr).
 			Msg("invalid todo id")
+
 		return utils.RespondError(c, fiber.StatusBadRequest, "invalid todo id", nil)
 	}
 
-	deleted := h.service.DeleteTodo(id)
-	if !deleted {
+	err = h.service.DeleteTodo(c.Context(), id)
+
+	if err != nil {
 		logger.Log.Warn().
 			Str("requestID", requestID).
 			Int("todo_id", id).
 			Msg("todo not found for deletion")
+
 		return utils.RespondError(c, fiber.StatusNotFound, "todo not found", nil)
 	}
 
@@ -127,6 +139,7 @@ func (h *TodoHandler) PatchTodoByID(c fiber.Ctx) error {
 			Str("requestID", requestID).
 			Str("id_param", idStr).
 			Msg("invalid todo id")
+
 		return utils.RespondError(c, fiber.StatusBadRequest, "invalid todo id", nil)
 	}
 
@@ -137,16 +150,18 @@ func (h *TodoHandler) PatchTodoByID(c fiber.Ctx) error {
 			Str("requestID", requestID).
 			Err(err).
 			Msg("bad request body")
+
 		return utils.RespondError(c, fiber.StatusBadRequest, "invalid request body", nil)
 	}
 
-	// Service handles validation
-	updatedTodo, validationErrs := h.service.PatchTodo(id, todoReq)
+	updatedTodo, validationErrs := h.service.PatchTodo(c.Context(), id, todoReq)
+
 	if validationErrs != nil {
 		logger.Log.Error().
 			Str("requestID", requestID).
 			Interface("validation_errors", validationErrs).
 			Msg("validation failed")
+
 		return utils.RespondValidationError(c, validationErrs)
 	}
 
@@ -155,6 +170,7 @@ func (h *TodoHandler) PatchTodoByID(c fiber.Ctx) error {
 			Str("requestID", requestID).
 			Int("todo_id", id).
 			Msg("todo not found for update")
+
 		return utils.RespondError(c, fiber.StatusNotFound, "todo not found", nil)
 	}
 

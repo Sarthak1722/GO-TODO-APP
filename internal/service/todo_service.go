@@ -1,61 +1,60 @@
 package service
 
 import (
+	"context"
+
 	"github.com/Sarthak1722/todo_app/internal/dto"
 	"github.com/Sarthak1722/todo_app/internal/errors"
 	"github.com/Sarthak1722/todo_app/internal/models"
-	"github.com/Sarthak1722/todo_app/internal/store"
+	"github.com/Sarthak1722/todo_app/internal/repository"
 	"github.com/Sarthak1722/todo_app/internal/validator"
 )
 
 // TodoService handles business logic for todos
 type TodoService struct {
-	store store.Store
+	store repository.Store
 }
 
 // NewTodoService creates a new todo service
-func NewTodoService(store store.Store) *TodoService {
+func NewTodoService(store repository.Store) *TodoService {
 	return &TodoService{
 		store: store,
 	}
 }
 
 // GetAllTodos retrieves all todos
-func (s *TodoService) GetAllTodos() []models.Todo {
-	return s.store.GetAllTodos()
+func (s *TodoService) GetAllTodos(ctx context.Context) ([]models.Todo, error) {
+	return s.store.GetAllTodos(ctx)
 }
 
 // GetTodoByID retrieves a single todo by ID
-func (s *TodoService) GetTodoByID(id int) *models.Todo {
-	return s.store.GetTodoByID(id)
+func (s *TodoService) GetTodoByID(ctx context.Context, id int) (*models.Todo, error) {
+	return s.store.GetTodoByID(ctx, id)
 }
 
-// CreateTodo creates a new todo (with validation)
-func (s *TodoService) CreateTodo(req dto.CreateTodoRequest) (*models.Todo, map[string]string) {
-	// Validate request
+// CreateTodo creates a new todo
+func (s *TodoService) CreateTodo(ctx context.Context, req dto.CreateTodoRequest) (*models.Todo, map[string]string) {
 	if err := validator.Validate.Struct(req); err != nil {
 		return nil, errors.FormatValidationErrors(err)
 	}
 
-	// Convert DTO to model
 	todo := models.Todo{
 		Body:      req.Body,
 		Completed: req.Completed,
 	}
 
-	// Create in store
-	createdTodo := s.store.CreateTodo(todo)
+	createdTodo, _ := s.store.CreateTodo(ctx, todo)
+
 	return &createdTodo, nil
 }
 
 // DeleteTodo deletes a todo by ID
-func (s *TodoService) DeleteTodo(id int) bool {
-	return s.store.DeleteTodoByID(id)
+func (s *TodoService) DeleteTodo(ctx context.Context, id int) error {
+	return s.store.DeleteTodoByID(ctx, id)
 }
 
 // PatchTodo updates a todo by ID
-func (s *TodoService) PatchTodo(id int, req dto.PatchTodoRequest) (*models.Todo, map[string]string) {
-	// Validate request
+func (s *TodoService) PatchTodo(ctx context.Context, id int, req dto.PatchTodoRequest) (*models.Todo, map[string]string) {
 	if err := validator.Validate.Struct(req); err != nil {
 		return nil, errors.FormatValidationErrors(err)
 	}
@@ -65,5 +64,7 @@ func (s *TodoService) PatchTodo(id int, req dto.PatchTodoRequest) (*models.Todo,
 		Completed: req.Completed,
 	}
 
-	return s.store.PatchTodoByID(id, todo), nil
+	updatedTodo, _ := s.store.PatchTodoByID(ctx, id, todo)
+
+	return updatedTodo, nil
 }
