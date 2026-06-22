@@ -1,0 +1,18 @@
+databases:
+  - name: go-todo-postgres
+    plan: free
+
+services:
+  - type: web
+    name: go-todo-app
+    env: go
+    rootDir: backend
+    buildCommand: cd ../frontend && npm ci && npm run build && cd ../backend && go build -o app ./cmd/api
+    startCommand: ./app
+    envVars:
+      - key: DB_TYPE
+        value: postgres
+      - key: POSTGRES_DSN
+        fromDatabase:
+          name: go-todo-postgres
+          property: connectionString
