@@ -1,5 +1,0 @@
-CREATE TABLE todos (
-    id SERIAL PRIMARY KEY,
-    body TEXT NOT NULL,
-    completed BOOLEAN DEFAULT FALSE,
-);

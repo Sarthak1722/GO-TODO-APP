@@ -33,9 +33,9 @@ func (s *TodoService) GetTodoByID(ctx context.Context, id int) (*models.Todo, er
 }
 
 // CreateTodo creates a new todo
-func (s *TodoService) CreateTodo(ctx context.Context, req dto.CreateTodoRequest) (*models.Todo, map[string]string) {
+func (s *TodoService) CreateTodo(ctx context.Context, req dto.CreateTodoRequest) (*models.Todo, error, map[string]string) {
 	if err := validator.Validate.Struct(req); err != nil {
-		return nil, errors.FormatValidationErrors(err)
+		return nil, nil, errors.FormatValidationErrors(err)
 	}
 
 	todo := models.Todo{
@@ -43,20 +43,23 @@ func (s *TodoService) CreateTodo(ctx context.Context, req dto.CreateTodoRequest)
 		Completed: req.Completed,
 	}
 
-	createdTodo, _ := s.store.CreateTodo(ctx, todo)
+	createdTodo, err := s.store.CreateTodo(ctx, todo)
+	if err != nil {
+		return nil, err, nil
+	}
 
-	return &createdTodo, nil
+	return &createdTodo, nil, nil
 }
 
 // DeleteTodo deletes a todo by ID
-func (s *TodoService) DeleteTodo(ctx context.Context, id int) error {
+func (s *TodoService) DeleteTodoByID(ctx context.Context, id int) error {
 	return s.store.DeleteTodoByID(ctx, id)
 }
 
 // PatchTodo updates a todo by ID
-func (s *TodoService) PatchTodo(ctx context.Context, id int, req dto.PatchTodoRequest) (*models.Todo, map[string]string) {
+func (s *TodoService) PatchTodoByID(ctx context.Context, id int, req dto.PatchTodoRequest) (*models.Todo, error, map[string]string) {
 	if err := validator.Validate.Struct(req); err != nil {
-		return nil, errors.FormatValidationErrors(err)
+		return nil, nil, errors.FormatValidationErrors(err)
 	}
 
 	todo := models.Todo{
@@ -64,7 +67,10 @@ func (s *TodoService) PatchTodo(ctx context.Context, id int, req dto.PatchTodoRe
 		Completed: req.Completed,
 	}
 
-	updatedTodo, _ := s.store.PatchTodoByID(ctx, id, todo)
+	updatedTodo, err := s.store.PatchTodoByID(ctx, id, todo)
+	if err != nil {
+		return nil, err, nil
+	}
 
-	return updatedTodo, nil
+	return updatedTodo, nil, nil
 }

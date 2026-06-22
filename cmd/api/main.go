@@ -3,7 +3,9 @@ package main
 import (
 	"log"
 	"os"
+	"path/filepath"
 
+	_ "github.com/Sarthak1722/todo_app/docs" // Import the generated docs!
 	"github.com/Sarthak1722/todo_app/internal/config"
 	"github.com/Sarthak1722/todo_app/internal/database"
 	"github.com/Sarthak1722/todo_app/internal/handlers"
@@ -12,11 +14,23 @@ import (
 	"github.com/Sarthak1722/todo_app/internal/repository"
 	"github.com/Sarthak1722/todo_app/internal/service"
 	"github.com/Sarthak1722/todo_app/internal/validator"
+	swaggo "github.com/gofiber/contrib/v3/swaggo"
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/static"
 	"github.com/joho/godotenv"
 )
 
+// THESE COMMENTS ARE WRITTEN FOR SWAGGO, IT USES THIS FOR CREATING THE OPENAPI.YAML FILE HEADERS.
+// @title Go Todo API
+// @version 1.0
+// @description This is a production-grade Todo API built with Go and Fiber.
+// @host localhost:3000
+// @BasePath /api
 func main() {
+	// load .env
+	if err := godotenv.Load(".env"); err != nil {
+		log.Println("No .env file found; using environment variables and defaults")
+	}
 	// Initialize logger
 	logger.Init("dev")
 
@@ -62,17 +76,18 @@ func main() {
 	// Initialize Fiber app
 	app := fiber.New()
 
-	errs := godotenv.Load(".env")
-	if errs != nil {
-		log.Fatal("Error loading .env file")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
 	}
-
-	PORT := os.Getenv("PORT")
 
 	// Middleware
 	app.Use(middleware.GetRequestID())
 	app.Use(middleware.RequestLogger())
 	app.Use(middleware.RecoverPanic())
+
+	// Attach the Swagger UI to your router
+	app.Get("/swagger/*", swaggo.HandlerDefault)
 
 	// Health check endpoint
 	app.Get("/health", func(c fiber.Ctx) error {
@@ -88,6 +103,14 @@ func main() {
 	app.Delete("/api/todos/:id", todoHandler.DeleteTodoByID)
 	app.Patch("/api/todos/:id", todoHandler.PatchTodoByID)
 
+	frontendDist := filepath.Clean("../frontend/dist")
+	if _, err := os.Stat(frontendDist); err == nil {
+		app.Get("/*", static.New(frontendDist))
+		app.Get("*", static.New(filepath.Join(frontendDist, "index.html")))
+	} else {
+		log.Printf("Frontend build not found at %s; serving API only", frontendDist)
+	}
+
 	// Start server
-	log.Fatal(app.Listen(":" + PORT))
+	log.Fatal(app.Listen(":" + port))
 }

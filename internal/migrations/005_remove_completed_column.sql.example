@@ -1,0 +1,5 @@
+ALTER TABLE todos DROP COLUMN completed;
+
+---- create above / drop below ----
+
+ALTER TABLE todos ADD COLUMN completed BOOLEAN DEFAULT FALSE;

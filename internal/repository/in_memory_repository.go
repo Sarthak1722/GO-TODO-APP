@@ -16,7 +16,7 @@ type InMemoryTodoRepository struct {
 }
 
 // NewInMemoryTodoRepository creates a new in-memory repository instance
-func NewInMemoryTodoRepository() *InMemoryTodoRepository {
+func NewInMemoryTodoRepository() Store {
 	return &InMemoryTodoRepository{
 		todos: []models.Todo{},
 	}
