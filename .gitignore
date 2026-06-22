@@ -18,3 +18,5 @@ frontend/dist/
 # IDE
 .vscode/
 .idea/
+
+backend/internal/migrations/tern-neon.conf

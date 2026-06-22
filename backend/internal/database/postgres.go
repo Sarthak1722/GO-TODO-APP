@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -15,6 +16,11 @@ func NewPostgresDB(dsn string) (*pgxpool.Pool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse connection string: %w", err)
 	}
+	// connection pool tuning
+	poolConfig.MaxConns = 10
+	poolConfig.MinConns = 2
+	poolConfig.MaxConnIdleTime = 5 * time.Minute
+	poolConfig.MaxConnLifetime = 30 * time.Minute
 
 	// 2. Establish the connection pool
 	// We use context.Background() here because this is app startup, not a specific web request

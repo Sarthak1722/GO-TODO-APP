@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { AnimatePresence, Reorder, motion, useReducedMotion } from 'framer-motion'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Activity,
@@ -19,6 +19,7 @@ import { TodoItem } from './components/TodoItem'
 import { API_BASE_URL, todoApi } from './lib/api'
 
 const TODOS_QUERY_KEY = ['todos']
+const TODO_ORDER_STORAGE_KEY = 'kaizen.todoOrder'
 
 const filters = [
   { id: 'all', label: 'All', icon: ListFilter },
@@ -36,17 +37,35 @@ const panelMotion = {
   },
 }
 
+const getStoredOrder = () => {
+  try {
+    const order = JSON.parse(localStorage.getItem(TODO_ORDER_STORAGE_KEY) || '[]')
+    return Array.isArray(order) ? order.map(Number).filter(Number.isFinite) : []
+  } catch {
+    return []
+  }
+}
+
+const getOrderedTodos = (todos, orderIds) => {
+  const order = new Map(orderIds.map((id, index) => [id, index]))
+
+  return [...todos].sort((a, b) => {
+    const aOrder = order.has(a.id) ? order.get(a.id) : Number.MAX_SAFE_INTEGER
+    const bOrder = order.has(b.id) ? order.get(b.id) : Number.MAX_SAFE_INTEGER
+
+    return aOrder - bOrder || b.id - a.id
+  })
+}
+
 const getVisibleTodos = (todos, filter, search) => {
   const query = search.trim().toLowerCase()
 
-  return [...todos]
-    .sort((a, b) => Number(a.completed) - Number(b.completed) || b.id - a.id)
-    .filter((todo) => {
-      if (filter === 'active' && todo.completed) return false
-      if (filter === 'done' && !todo.completed) return false
-      if (!query) return true
-      return todo.body.toLowerCase().includes(query)
-    })
+  return todos.filter((todo) => {
+    if (filter === 'active' && todo.completed) return false
+    if (filter === 'done' && !todo.completed) return false
+    if (!query) return true
+    return todo.body.toLowerCase().includes(query)
+  })
 }
 
 const friendlyError = (error, action) => {
@@ -81,13 +100,17 @@ function App() {
   const [draft, setDraft] = useState('')
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
+  const [orderIds, setOrderIds] = useState(getStoredOrder)
 
   const todosQuery = useQuery({
     queryKey: TODOS_QUERY_KEY,
     queryFn: todoApi.listTodos,
   })
 
-  const todos = useMemo(() => todosQuery.data ?? [], [todosQuery.data])
+  const todos = useMemo(
+    () => getOrderedTodos(todosQuery.data ?? [], orderIds),
+    [orderIds, todosQuery.data],
+  )
   const stats = useMemo(() => {
     const done = todos.filter((todo) => todo.completed).length
     return {
@@ -117,15 +140,20 @@ function App() {
       const tempId = -Date.now()
 
       queryClient.setQueryData(TODOS_QUERY_KEY, [
-        ...previousTodos,
         { id: tempId, body, completed: false, optimistic: true },
+        ...previousTodos,
       ])
+
+      setOrderIds((currentOrder) => [tempId, ...currentOrder])
 
       setDraft('')
       return { previousTodos, tempId, body }
     },
     onError: (error, _body, context) => {
       queryClient.setQueryData(TODOS_QUERY_KEY, context?.previousTodos ?? [])
+      setOrderIds((currentOrder) =>
+        currentOrder.filter((id) => id !== context?.tempId),
+      )
       setDraft(context?.body ?? '')
       showErrorToast(error, 'create the todo')
     },
@@ -134,6 +162,9 @@ function App() {
         currentTodos.map((todo) =>
           todo.id === context.tempId ? createdTodo : todo,
         ),
+      )
+      setOrderIds((currentOrder) =>
+        currentOrder.map((id) => (id === context.tempId ? createdTodo.id : id)),
       )
       toast.success('Todo added', {
         description: 'Created instantly and confirmed by the Go API.',
@@ -145,19 +176,19 @@ function App() {
   })
 
   const toggleTodo = useMutation({
-    mutationFn: ({ todo, completed }) =>
+    mutationFn: ({ todo, completed, body = todo.body }) =>
       todoApi.updateTodo(todo.id, {
         id: todo.id,
-        body: todo.body,
+        body,
         completed,
       }),
-    onMutate: async ({ todo, completed }) => {
+    onMutate: async ({ todo, completed, body = todo.body }) => {
       await queryClient.cancelQueries({ queryKey: TODOS_QUERY_KEY })
       const previousTodos = queryClient.getQueryData(TODOS_QUERY_KEY) ?? []
 
       queryClient.setQueryData(TODOS_QUERY_KEY, (currentTodos = []) =>
         currentTodos.map((item) =>
-          item.id === todo.id ? { ...item, completed } : item,
+          item.id === todo.id ? { ...item, body, completed } : item,
         ),
       )
 
@@ -178,6 +209,20 @@ function App() {
       queryClient.invalidateQueries({ queryKey: TODOS_QUERY_KEY })
     },
   })
+
+  const reorderTodos = (nextVisibleTodos) => {
+    const visibleIds = new Set(visibleTodos.map((todo) => todo.id))
+    const reorderedVisibleTodos = [...nextVisibleTodos]
+
+    const nextTodos = todos.map((todo) =>
+      visibleIds.has(todo.id) ? reorderedVisibleTodos.shift() : todo,
+    )
+    const nextOrder = nextTodos.map((todo) => todo.id)
+
+    setOrderIds(nextOrder)
+    localStorage.setItem(TODO_ORDER_STORAGE_KEY, JSON.stringify(nextOrder))
+    queryClient.setQueryData(TODOS_QUERY_KEY, nextTodos)
+  }
 
   const deleteTodo = useMutation({
     mutationFn: (todo) => todoApi.deleteTodo(todo.id),
@@ -276,12 +321,19 @@ function App() {
               <Sparkles className="size-6" />
             </motion.div>
             <div>
-              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.42em] text-zinc-600">
+              {/* <p className="text-[0.65rem] font-semibold uppercase tracking-[0.42em] text-zinc-600">
                 Go · Fiber · v1.0
-              </p>
-              <h1 className="mt-1 text-xl font-semibold tracking-tight text-white">
-                Do your thing!
+              </p> */}
+              <h1 className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+                Kaizen
+                <span className="font-serif text-2xl font-light text-teal-200/90 sm:text-3xl">
+                  改善
+                </span>
               </h1>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-zinc-500">
+                From the Japanese idea of continuous improvement: small,
+                deliberate changes that compound into meaningful progress.
+              </p>
             </div>
           </div>
 
@@ -438,7 +490,13 @@ function App() {
           ) : (
             <AnimatePresence mode="popLayout" initial={false}>
               {visibleTodos.length ? (
-                <motion.ul layout className="space-y-3">
+                <Reorder.Group
+                  as="ul"
+                  axis="y"
+                  values={visibleTodos}
+                  onReorder={reorderTodos}
+                  className="space-y-3"
+                >
                   {visibleTodos.map((todo) => (
                     <TodoItem
                       key={todo.id}
@@ -450,9 +508,23 @@ function App() {
                         })
                       }
                       onDelete={(item) => deleteTodo.mutate(item)}
+                      onEdit={(item, body) =>
+                        toggleTodo.mutate({
+                          todo: item,
+                          body,
+                          completed: item.completed,
+                          action: 'edit',
+                        })
+                      }
                       isToggling={
                         toggleTodo.isPending &&
-                        toggleTodo.variables?.todo?.id === todo.id
+                        toggleTodo.variables?.todo?.id === todo.id &&
+                        toggleTodo.variables?.action !== 'edit'
+                      }
+                      isEditing={
+                        toggleTodo.isPending &&
+                        toggleTodo.variables?.todo?.id === todo.id &&
+                        toggleTodo.variables?.action === 'edit'
                       }
                       isDeleting={
                         deleteTodo.isPending &&
@@ -460,7 +532,7 @@ function App() {
                       }
                     />
                   ))}
-                </motion.ul>
+                </Reorder.Group>
               ) : (
                 <EmptyState
                   hasTodos={todos.length > 0}
