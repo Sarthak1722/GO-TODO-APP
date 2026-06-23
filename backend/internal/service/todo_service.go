@@ -22,18 +22,18 @@ func NewTodoService(store repository.Store) *TodoService {
 	}
 }
 
-// GetAllTodos retrieves all todos
-func (s *TodoService) GetAllTodos(ctx context.Context) ([]models.Todo, error) {
-	return s.store.GetAllTodos(ctx)
+// GetAllTodos retrieves all todos for a specific user
+func (s *TodoService) GetAllTodos(ctx context.Context, userID string) ([]models.Todo, error) {
+	return s.store.GetAllTodos(ctx, userID)
 }
 
-// GetTodoByID retrieves a single todo by ID
-func (s *TodoService) GetTodoByID(ctx context.Context, id int) (*models.Todo, error) {
-	return s.store.GetTodoByID(ctx, id)
+// GetTodoByID retrieves a single todo by ID for a specific user
+func (s *TodoService) GetTodoByID(ctx context.Context, id int, userID string) (*models.Todo, error) {
+	return s.store.GetTodoByID(ctx, id, userID)
 }
 
-// CreateTodo creates a new todo
-func (s *TodoService) CreateTodo(ctx context.Context, req dto.CreateTodoRequest) (*models.Todo, error, map[string]string) {
+// CreateTodo creates a new todo for a specific user
+func (s *TodoService) CreateTodo(ctx context.Context, req dto.CreateTodoRequest, userID string) (*models.Todo, error, map[string]string) {
 	if err := validator.Validate.Struct(req); err != nil {
 		return nil, nil, errors.FormatValidationErrors(err)
 	}
@@ -41,9 +41,10 @@ func (s *TodoService) CreateTodo(ctx context.Context, req dto.CreateTodoRequest)
 	todo := models.Todo{
 		Body:      req.Body,
 		Completed: req.Completed,
+		UserID:    userID, // Bind the identity!
 	}
 
-	createdTodo, err := s.store.CreateTodo(ctx, todo)
+	createdTodo, err := s.store.CreateTodo(ctx, todo, userID)
 	if err != nil {
 		return nil, err, nil
 	}
@@ -51,13 +52,13 @@ func (s *TodoService) CreateTodo(ctx context.Context, req dto.CreateTodoRequest)
 	return &createdTodo, nil, nil
 }
 
-// DeleteTodo deletes a todo by ID
-func (s *TodoService) DeleteTodoByID(ctx context.Context, id int) error {
-	return s.store.DeleteTodoByID(ctx, id)
+// DeleteTodoByID deletes a todo by ID, ensuring ownership
+func (s *TodoService) DeleteTodoByID(ctx context.Context, id int, userID string) error {
+	return s.store.DeleteTodoByID(ctx, id, userID)
 }
 
-// PatchTodo updates a todo by ID
-func (s *TodoService) PatchTodoByID(ctx context.Context, id int, req dto.PatchTodoRequest) (*models.Todo, error, map[string]string) {
+// PatchTodoByID updates a todo by ID, ensuring ownership
+func (s *TodoService) PatchTodoByID(ctx context.Context, id int, req dto.PatchTodoRequest, userID string) (*models.Todo, error, map[string]string) {
 	if err := validator.Validate.Struct(req); err != nil {
 		return nil, nil, errors.FormatValidationErrors(err)
 	}
@@ -65,9 +66,10 @@ func (s *TodoService) PatchTodoByID(ctx context.Context, id int, req dto.PatchTo
 	todo := models.Todo{
 		Body:      req.Body,
 		Completed: req.Completed,
+		UserID:    userID, // Bind the identity!
 	}
 
-	updatedTodo, err := s.store.PatchTodoByID(ctx, id, todo)
+	updatedTodo, err := s.store.PatchTodoByID(ctx, id, todo, userID)
 	if err != nil {
 		return nil, err, nil
 	}

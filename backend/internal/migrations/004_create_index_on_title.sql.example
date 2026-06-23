@@ -1,5 +1,0 @@
-CREATE INDEX idx_todos_body ON todos(body);
-
----- create above / drop below ----
-
-DROP INDEX idx_todos_body;

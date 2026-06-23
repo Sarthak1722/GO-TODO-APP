@@ -14,6 +14,12 @@ import {
   TriangleAlert,
   X,
 } from 'lucide-react'
+import {
+  SignInButton,
+  SignUpButton,
+  UserButton,
+  useAuth,
+} from "@clerk/react";
 import { Toaster, toast } from 'sonner'
 import { TodoItem } from './components/TodoItem'
 import { API_BASE_URL, todoApi } from './lib/api'
@@ -95,8 +101,10 @@ const showErrorToast = (error, action) => {
 }
 
 function App() {
+  const { isLoaded, isSignedIn, getToken } = useAuth();
   const queryClient = useQueryClient()
   const prefersReducedMotion = useReducedMotion()
+
   const [draft, setDraft] = useState('')
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
@@ -104,8 +112,9 @@ function App() {
 
   const todosQuery = useQuery({
     queryKey: TODOS_QUERY_KEY,
-    queryFn: todoApi.listTodos,
-  })
+    queryFn: () => todoApi.listTodos(getToken),
+    enabled: isLoaded && isSignedIn,
+  });
 
   const todos = useMemo(
     () => getOrderedTodos(todosQuery.data ?? [], orderIds),
@@ -133,10 +142,12 @@ function App() {
   }, [todosQuery.error, todosQuery.isError])
 
   const createTodo = useMutation({
-    mutationFn: todoApi.createTodo,
+    mutationFn: (body) => todoApi.createTodo(body, getToken),
+
     onMutate: async (body) => {
       await queryClient.cancelQueries({ queryKey: TODOS_QUERY_KEY })
-      const previousTodos = queryClient.getQueryData(TODOS_QUERY_KEY) ?? []
+      
+      const previousTodos = queryClient.getQueryData(TODOS_QUERY_KEY) ?? [];
       const tempId = -Date.now()
 
       queryClient.setQueryData(TODOS_QUERY_KEY, [
@@ -177,11 +188,15 @@ function App() {
 
   const toggleTodo = useMutation({
     mutationFn: ({ todo, completed, body = todo.body }) =>
-      todoApi.updateTodo(todo.id, {
-        id: todo.id,
-        body,
-        completed,
-      }),
+      todoApi.updateTodo(
+        todo.id,
+        {
+          id: todo.id,
+          body,
+          completed,
+        },
+        getToken
+      ),
     onMutate: async ({ todo, completed, body = todo.body }) => {
       await queryClient.cancelQueries({ queryKey: TODOS_QUERY_KEY })
       const previousTodos = queryClient.getQueryData(TODOS_QUERY_KEY) ?? []
@@ -210,22 +225,9 @@ function App() {
     },
   })
 
-  const reorderTodos = (nextVisibleTodos) => {
-    const visibleIds = new Set(visibleTodos.map((todo) => todo.id))
-    const reorderedVisibleTodos = [...nextVisibleTodos]
-
-    const nextTodos = todos.map((todo) =>
-      visibleIds.has(todo.id) ? reorderedVisibleTodos.shift() : todo,
-    )
-    const nextOrder = nextTodos.map((todo) => todo.id)
-
-    setOrderIds(nextOrder)
-    localStorage.setItem(TODO_ORDER_STORAGE_KEY, JSON.stringify(nextOrder))
-    queryClient.setQueryData(TODOS_QUERY_KEY, nextTodos)
-  }
-
   const deleteTodo = useMutation({
-    mutationFn: (todo) => todoApi.deleteTodo(todo.id),
+    mutationFn: (todo) =>
+      todoApi.deleteTodo(todo.id, getToken),
     onMutate: async (todo) => {
       await queryClient.cancelQueries({ queryKey: TODOS_QUERY_KEY })
       const previousTodos = queryClient.getQueryData(TODOS_QUERY_KEY) ?? []
@@ -238,17 +240,45 @@ function App() {
     },
     onError: (error, _todo, context) => {
       queryClient.setQueryData(TODOS_QUERY_KEY, context?.previousTodos ?? [])
-      showErrorToast(error, 'delete the todo')
+      showErrorToast(error, 'delete todo')
     },
     onSuccess: () => {
       toast('Todo deleted', {
-        description: 'Removed from the list and confirmed by the API.',
+        description: 'Removed successfully',
       })
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: TODOS_QUERY_KEY })
     },
   })
+
+  const reorderTodos = (nextVisibleTodos) => {
+    const visibleIds = new Set(
+      visibleTodos.map((todo) => todo.id)
+    );
+
+    const reorderedVisibleTodos = [...nextVisibleTodos];
+
+    const nextTodos = todos.map((todo) =>
+      visibleIds.has(todo.id)
+        ? reorderedVisibleTodos.shift()
+        : todo
+    );
+
+    const nextOrder = nextTodos.map((todo) => todo.id);
+
+    setOrderIds(nextOrder);
+
+    localStorage.setItem(
+      TODO_ORDER_STORAGE_KEY,
+      JSON.stringify(nextOrder)
+    );
+
+    queryClient.setQueryData(
+      TODOS_QUERY_KEY,
+      nextTodos
+    );
+  };
 
   const handleSubmit = (event) => {
     event.preventDefault()
@@ -275,6 +305,14 @@ function App() {
     weekday: 'long',
   }).format(new Date())
 
+  if (!isLoaded) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-zinc-950 text-white">
+        Loading...
+      </main>
+    );
+  }
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-zinc-950 px-4 py-6 text-zinc-100 sm:px-6 lg:px-8">
       <div className="noise-mask pointer-events-none absolute inset-0 opacity-60" />
@@ -294,6 +332,9 @@ function App() {
         }}
       />
 
+      {!isSignedIn ? (
+        <SignedOutView />
+      ) : (
       <motion.section
         initial={prefersReducedMotion ? false : 'hidden'}
         animate="visible"
@@ -341,6 +382,7 @@ function App() {
             <Activity className="size-4 text-teal-200" />
             <span className="truncate">{API_BASE_URL}</span>
             <span className="size-2 rounded-full bg-emerald-400 shadow-[0_0_18px_rgba(52,211,153,0.8)]" />
+            <UserButton/>
           </div>
         </header>
 
@@ -546,8 +588,43 @@ function App() {
           )}
         </section>
       </motion.section>
+      )}
     </main>
-  )
+  );
+}
+
+function SignedOutView() {
+  return (
+    <section className="mx-auto flex min-h-screen max-w-5xl flex-col justify-center gap-8 text-white">
+      <div>
+        <h1 className="text-6xl font-semibold">
+          Kaizen{" "}
+          <span className="text-teal-200 font-serif">
+            改善
+          </span>
+        </h1>
+
+        <p className="mt-4 text-zinc-400 max-w-2xl">
+          Small deliberate improvements every day.
+          Sign in to begin.
+        </p>
+      </div>
+
+      <div className="flex gap-4">
+        <SignInButton mode="modal">
+          <button className="rounded-2xl bg-white/5 px-5 py-3">
+            Sign In
+          </button>
+        </SignInButton>
+
+        <SignUpButton mode="modal">
+          <button className="rounded-2xl bg-teal-200 text-black px-5 py-3">
+            Sign Up
+          </button>
+        </SignUpButton>
+      </div>
+    </section>
+  );
 }
 
 function StatCard({ label, value, suffix, tone = 'text-white' }) {

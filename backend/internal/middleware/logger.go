@@ -10,7 +10,7 @@ import (
 func RequestLogger() fiber.Handler {
 
 	return func(c fiber.Ctx) error {
-		logger.Log.Info().Str("route", c.Path()).Msg("Received a "+c.Method()+" request")
+		logger.Log.Info().Str("route", c.Path()).Msg("Received a " + c.Method() + " request")
 
 		// STEP 1 → start timer
 		start := time.Now()

@@ -104,7 +104,7 @@ export function TodoItem({
       <div className="relative flex min-h-16 items-center gap-3 px-4 py-3 sm:px-5">
         <button
           type="button"
-          className="hidden size-8 shrink-0 cursor-grab place-items-center rounded-xl text-zinc-700 transition active:cursor-grabbing group-hover:text-zinc-500 hover:bg-white/5 sm:grid"
+          className="hidden size-8 shrink-0 hover:cursor-grab active:cursor-grabbing place-items-center rounded-xl text-zinc-700 transition group-hover:text-zinc-500 hover:bg-white/5 sm:grid"
           aria-label="Drag to reorder todo"
         >
           <GripVertical aria-hidden="true" className="size-4" />

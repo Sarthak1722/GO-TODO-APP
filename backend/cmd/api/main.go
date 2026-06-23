@@ -14,6 +14,7 @@ import (
 	"github.com/Sarthak1722/todo_app/internal/repository"
 	"github.com/Sarthak1722/todo_app/internal/service"
 	"github.com/Sarthak1722/todo_app/internal/validator"
+	"github.com/clerk/clerk-sdk-go/v2"
 	swaggo "github.com/gofiber/contrib/v3/swaggo"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/static"
@@ -21,9 +22,9 @@ import (
 )
 
 // THESE COMMENTS ARE WRITTEN FOR SWAGGO, IT USES THIS FOR CREATING THE OPENAPI.YAML FILE HEADERS.
-// @title Go Todo API
+// @title Simple Todo API
 // @version 1.0
-// @description This is a production-grade Todo API built with Go and Fiber.
+// @description A small authenticated todo API built with Go and Fiber.
 // @host localhost:3000
 // @BasePath /api
 func main() {
@@ -73,6 +74,13 @@ func main() {
 
 	// (Your HTTP server startup code like `http.ListenAndServe` will go here later)
 
+	clerkSecret := os.Getenv("CLERK_SECRET_KEY")
+	if clerkSecret == "" {
+		logger.Log.Fatal().Msg("CLERK_SECRET_KEY is not set in environment")
+	}
+	// Set the global key for the Clerk SDK
+	clerk.SetKey(clerkSecret)
+
 	// Initialize Fiber app
 	app := fiber.New()
 
@@ -96,12 +104,14 @@ func main() {
 		})
 	})
 
+	api := app.Group("/api", middleware.ClerkAuth())
+
 	// Todo routes
-	app.Get("/api/todos", todoHandler.GetAllTodos)
-	app.Get("/api/todos/:id", todoHandler.GetTodoByID)
-	app.Post("/api/todos", todoHandler.CreateTodo)
-	app.Delete("/api/todos/:id", todoHandler.DeleteTodoByID)
-	app.Patch("/api/todos/:id", todoHandler.PatchTodoByID)
+	api.Get("/todos", todoHandler.GetAllTodos)
+	api.Get("/todos/:id", todoHandler.GetTodoByID)
+	api.Post("/todos", todoHandler.CreateTodo)
+	api.Delete("/todos/:id", todoHandler.DeleteTodoByID)
+	api.Patch("/todos/:id", todoHandler.PatchTodoByID)
 
 	frontendDist := filepath.Clean("../frontend/dist")
 	if _, err := os.Stat(frontendDist); err == nil {

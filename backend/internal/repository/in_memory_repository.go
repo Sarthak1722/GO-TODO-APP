@@ -16,28 +16,31 @@ type InMemoryTodoRepository struct {
 }
 
 // NewInMemoryTodoRepository creates a new in-memory repository instance
-func NewInMemoryTodoRepository() Store {
+func NewInMemoryTodoRepository() *InMemoryTodoRepository {
 	return &InMemoryTodoRepository{
 		todos: []models.Todo{},
 	}
 }
 
-func (s *InMemoryTodoRepository) GetAllTodos(ctx context.Context) ([]models.Todo, error) {
+func (s *InMemoryTodoRepository) GetAllTodos(ctx context.Context, userID string) ([]models.Todo, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	todos := make([]models.Todo, len(s.todos))
 	copy(todos, s.todos)
+	todos = slices.DeleteFunc(todos, func(todo models.Todo) bool {
+		return todo.UserID != userID
+	})
 
 	return todos, nil
 }
 
-func (s *InMemoryTodoRepository) GetTodoByID(ctx context.Context, id int) (*models.Todo, error) {
+func (s *InMemoryTodoRepository) GetTodoByID(ctx context.Context, id int, userID string) (*models.Todo, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	for i, todo := range s.todos {
-		if todo.ID == id {
+		if todo.ID == id && todo.UserID == userID {
 			return &s.todos[i], nil
 		}
 	}
@@ -45,7 +48,7 @@ func (s *InMemoryTodoRepository) GetTodoByID(ctx context.Context, id int) (*mode
 	return nil, nil
 }
 
-func (s *InMemoryTodoRepository) CreateTodo(ctx context.Context, todo models.Todo) (models.Todo, error) {
+func (s *InMemoryTodoRepository) CreateTodo(ctx context.Context, todo models.Todo, userID string) (models.Todo, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -55,19 +58,20 @@ func (s *InMemoryTodoRepository) CreateTodo(ctx context.Context, todo models.Tod
 	}
 
 	todo.ID = id
+	todo.UserID = userID
 	s.todos = append(s.todos, todo)
 
 	return todo, nil
 }
 
-func (s *InMemoryTodoRepository) DeleteTodoByID(ctx context.Context, id int) error {
+func (s *InMemoryTodoRepository) DeleteTodoByID(ctx context.Context, id int, userID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	originalLen := len(s.todos)
 
 	s.todos = slices.DeleteFunc(s.todos, func(e models.Todo) bool {
-		return e.ID == id
+		return e.ID == id && e.UserID == userID
 	})
 
 	if originalLen == len(s.todos) {
@@ -77,13 +81,14 @@ func (s *InMemoryTodoRepository) DeleteTodoByID(ctx context.Context, id int) err
 	return nil
 }
 
-func (s *InMemoryTodoRepository) PatchTodoByID(ctx context.Context, id int, todo models.Todo) (*models.Todo, error) {
+func (s *InMemoryTodoRepository) PatchTodoByID(ctx context.Context, id int, todo models.Todo, userID string) (*models.Todo, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	for i, existingTodo := range s.todos {
-		if existingTodo.ID == id {
+		if existingTodo.ID == id && existingTodo.UserID == userID {
 			todo.ID = existingTodo.ID
+			todo.UserID = userID
 
 			if todo.Body == "" {
 				todo.Body = existingTodo.Body

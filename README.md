@@ -1,4 +1,4 @@
-# 🚀 GO-TODO-APP
+# 🚀 Kaizen
 
 > A production-grade backend engineering project built from first principles using **Go**.  
 > This is **not just a TODO app** — it is a journey of transforming a simple CRUD API into a **real-world scalable backend system** while learning professional backend engineering practices.

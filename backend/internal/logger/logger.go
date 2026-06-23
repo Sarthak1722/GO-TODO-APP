@@ -1,28 +1,28 @@
 package logger
 
 import (
-    "os"
-    "github.com/rs/zerolog"
+	"github.com/rs/zerolog"
+	"os"
 )
 
 var Log zerolog.Logger
 
 func Init(env string) {
 
-    if env == "dev" {
-        Log = zerolog.New(
-            zerolog.ConsoleWriter{
-                Out: os.Stdout,
-            },
-        ).With().
-            Timestamp().
-            Logger()
+	if env == "dev" {
+		Log = zerolog.New(
+			zerolog.ConsoleWriter{
+				Out: os.Stdout,
+			},
+		).With().
+			Timestamp().
+			Logger()
 
-        return
-    }
+		return
+	}
 
-    Log = zerolog.New(os.Stdout).
-        With().
-        Timestamp().
-        Logger()
+	Log = zerolog.New(os.Stdout).
+		With().
+		Timestamp().
+		Logger()
 }

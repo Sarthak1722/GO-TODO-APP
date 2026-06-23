@@ -1,6 +1,7 @@
 package config
 
 import (
+	"log"
 	"os"
 	"strings"
 )
@@ -10,16 +11,32 @@ type Config struct {
 	PostgresDSN string
 }
 
-// Load reads configuration from environment variables
+// Load reads configuration from environment variables.
+// Required env vars when DB_TYPE=postgres:
+//   - ENV: "dev" or "prod"
+//   - POSTGRES_DEV_DSN  (when ENV=dev)
+//   - POSTGRES_PROD_DSN (when ENV=prod)
 func Load() *Config {
 	dbType := strings.ToLower(os.Getenv("DB_TYPE"))
 	if dbType == "" {
-		dbType = "memory" // default to in-memory
+		dbType = "memory"
 	}
 
-	postgresDSN := os.Getenv("POSTGRES_DSN")
-	if postgresDSN == "" {
-		postgresDSN = "postgres://sarthak@localhost:5432/todo_app"
+	var postgresDSN string
+
+	if dbType == "postgres" {
+		switch env := os.Getenv("ENV"); env {
+		case "dev":
+			postgresDSN = os.Getenv("POSTGRES_DEV_DSN")
+		case "prod":
+			postgresDSN = os.Getenv("POSTGRES_PROD_DSN")
+		default:
+			log.Fatalf("config: DB_TYPE is postgres but ENV is %q — must be \"dev\" or \"prod\"", env)
+		}
+
+		if postgresDSN == "" {
+			log.Fatalf("config: DB_TYPE is postgres but the DSN for ENV=%q is empty", os.Getenv("ENV"))
+		}
 	}
 
 	return &Config{

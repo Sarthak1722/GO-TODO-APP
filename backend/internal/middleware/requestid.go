@@ -7,7 +7,6 @@ import (
 
 func GetRequestID() fiber.Handler {
 	return func(c fiber.Ctx) error {
-		
 
 		// generate UUID
 		requestID := uuid.New().String()
