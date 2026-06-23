@@ -57,7 +57,7 @@ tasks:
     desc: Build frontend and run backend serving dist folder
     cmds:
       - task build:frontend
-      - cd backend && go run cmd/api/main.go
+      - cd backend && APP_ENV=production go run cmd/api/main.go
 
   run:
     desc: Run already-built backend binary

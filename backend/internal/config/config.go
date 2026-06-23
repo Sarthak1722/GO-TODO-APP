@@ -9,6 +9,8 @@ import (
 type Config struct {
 	DBType      string
 	PostgresDSN string
+	ENV         string
+	USE_DB      string
 }
 
 // Load reads configuration from environment variables.
@@ -25,22 +27,32 @@ func Load() *Config {
 	var postgresDSN string
 
 	if dbType == "postgres" {
-		switch env := os.Getenv("ENV"); env {
-		case "dev":
+		switch env := os.Getenv("USE_DB"); env {
+		case "local":
 			postgresDSN = os.Getenv("POSTGRES_DEV_DSN")
-		case "prod":
+		case "remote":
 			postgresDSN = os.Getenv("POSTGRES_PROD_DSN")
 		default:
-			log.Fatalf("config: DB_TYPE is postgres but ENV is %q — must be \"dev\" or \"prod\"", env)
+			log.Fatalf("config: DB_TYPE is postgres but USE_DB is %q — must be \"local\" or \"remote\"", env)
 		}
 
 		if postgresDSN == "" {
-			log.Fatalf("config: DB_TYPE is postgres but the DSN for ENV=%q is empty", os.Getenv("ENV"))
+			log.Fatalf("config: DB_TYPE is postgres but the DSN for USE_DB=%q is empty", os.Getenv("USE_DB"))
 		}
 	}
 
+	var ENVIRONMENT = strings.ToLower(os.Getenv("ENV"))
+	if ENVIRONMENT == "" {
+		ENVIRONMENT = "dev"
+	}
+	var USE_DB = strings.ToLower(os.Getenv("USE_DB"))
+	if USE_DB == "" {
+		USE_DB = "local"
+	}
 	return &Config{
 		DBType:      dbType,
 		PostgresDSN: postgresDSN,
+		ENV:         ENVIRONMENT,
+		USE_DB:      USE_DB,
 	}
 }

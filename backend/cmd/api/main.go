@@ -33,14 +33,13 @@ func main() {
 	if err := godotenv.Load(".env"); err != nil {
 		log.Println("No .env file found; using environment variables and defaults")
 	}
+	// Load configuration
+	cfg := config.Load()
 	// Initialize logger
-	logger.Init("dev")
+	logger.Init(cfg.ENV)
 
 	// Initialize validator
 	validator.Init()
-
-	// Load configuration
-	cfg := config.Load()
 
 	var todoStore repository.Store
 
@@ -120,14 +119,18 @@ func main() {
 	api.Delete("/todos/:id", todoHandler.DeleteTodoByID)
 	api.Patch("/todos/:id", todoHandler.PatchTodoByID)
 
-	frontendDist := filepath.Clean("../frontend/dist")
-	if _, err := os.Stat(frontendDist); err == nil {
-		app.Get("/*", static.New(frontendDist))
-		app.Get("*", static.New(filepath.Join(frontendDist, "index.html")))
-	} else {
-		log.Printf("Frontend build not found at %s; serving API only", frontendDist)
-	}
+	if cfg.ENV == "prod" {
+    frontendDist := filepath.Clean("../frontend/dist")
 
+    if _, err := os.Stat(frontendDist); err == nil {
+        log.Println("Production mode: serving frontend static files")
+
+        app.Get("/*", static.New(frontendDist))
+        app.Get("*", static.New(filepath.Join(frontendDist, "index.html")))
+    } else {
+        log.Printf("Frontend build not found at %s", frontendDist)
+    }
+}
 	// Start server
 	log.Fatal(app.Listen(":" + port))
 }
