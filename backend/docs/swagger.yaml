@@ -11,6 +11,13 @@ definitions:
     required:
     - body
     type: object
+  dto.PatchTodoRequest:
+    properties:
+      body:
+        type: string
+      completed:
+        type: boolean
+    type: object
   models.Todo:
     properties:
       body:
@@ -30,16 +37,17 @@ definitions:
       success:
         type: boolean
     type: object
-host: localhost:3000
+host: localhost:8080
 info:
   contact: {}
-  description: This is a production-grade Todo API built with Go and Fiber.
-  title: Go Todo API
+  description: A small authenticated todo API built with Go and Fiber.
+  title: Simple Todo API
   version: "1.0"
 paths:
   /todos:
     get:
-      description: Returns a list of all todos in the database
+      description: Returns a list of all todos in the database for the authenticated
+        user
       produces:
       - application/json
       responses:
@@ -49,6 +57,10 @@ paths:
             items:
               $ref: '#/definitions/models.Todo'
             type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -59,7 +71,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Adds a new todo to the in-memory/postgres database
+      description: Adds a new todo to the database
       parameters:
       - description: Todo Data
         in: body
@@ -76,6 +88,10 @@ paths:
             $ref: '#/definitions/models.Todo'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Unauthorized
           schema:
             $ref: '#/definitions/utils.ErrorResponse'
         "500":
@@ -99,6 +115,10 @@ paths:
           description: No Content
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Unauthorized
           schema:
             $ref: '#/definitions/utils.ErrorResponse'
         "404":
@@ -131,6 +151,10 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -157,7 +181,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.Todo'
+          $ref: '#/definitions/dto.PatchTodoRequest'
       produces:
       - application/json
       responses:
@@ -167,6 +191,10 @@ paths:
             $ref: '#/definitions/models.Todo'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Unauthorized
           schema:
             $ref: '#/definitions/utils.ErrorResponse'
         "404":

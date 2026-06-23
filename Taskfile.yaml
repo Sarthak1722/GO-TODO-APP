@@ -1,0 +1,223 @@
+version: "3"
+
+vars:
+  FRONTEND_DIR: frontend
+  BACKEND_DIR: backend
+
+tasks:
+
+  # ============================================================
+  # DEVELOPMENT
+  # ============================================================
+
+  frontend:
+    desc: Start Vite dev server
+    dir: "{{.FRONTEND_DIR}}"
+    cmds:
+      - npm run dev
+
+  backend:
+    desc: Start Go backend with Air
+    dir: "{{.BACKEND_DIR}}"
+    cmds:
+      - air -c air.toml
+
+  dev:
+    desc: Run frontend + backend in development mode
+    cmds:
+      - concurrently "task backend" "task frontend"
+
+  # ============================================================
+  # PRODUCTION BUILD
+  # ============================================================
+
+  build:frontend:
+    desc: Build frontend production bundle
+    dir: "{{.FRONTEND_DIR}}"
+    cmds:
+      - npm run build
+
+  build:backend:
+    desc: Build Go backend binary
+    dir: "{{.BACKEND_DIR}}"
+    cmds:
+      - go build -o bin/server ./cmd/api
+
+  build:
+    desc: Build frontend + backend
+    cmds:
+      - task build:frontend
+      - task build:backend
+
+  # ============================================================
+  # PRODUCTION RUN
+  # ============================================================
+
+  prod:
+    desc: Build frontend and run backend serving dist folder
+    cmds:
+      - task build:frontend
+      - cd backend && go run cmd/api/main.go
+
+  run:
+    desc: Run already-built backend binary
+    dir: "{{.BACKEND_DIR}}"
+    cmds:
+      - ./bin/server
+
+  # ============================================================
+  # TESTING
+  # ============================================================
+
+  test:
+    desc: Run all Go tests
+    dir: "{{.BACKEND_DIR}}"
+    cmds:
+      - go test ./... -v
+
+  test:race:
+    desc: Run tests with race detector
+    dir: "{{.BACKEND_DIR}}"
+    cmds:
+      - go test ./... -race
+
+  benchmark:
+    desc: Run Go benchmarks
+    dir: "{{.BACKEND_DIR}}"
+    cmds:
+      - go test -bench=. ./...
+
+  # ============================================================
+  # LINTING
+  # ============================================================
+
+  lint:frontend:
+    desc: Run ESLint
+    dir: "{{.FRONTEND_DIR}}"
+    cmds:
+      - npm run lint
+
+  lint:backend:
+    desc: Run Go vet
+    dir: "{{.BACKEND_DIR}}"
+    cmds:
+      - go vet ./...
+
+  lint:
+    desc: Run all linters
+    cmds:
+      - task lint:frontend
+      - task lint:backend
+
+  # ============================================================
+  # FORMATTING
+  # ============================================================
+
+  fmt:backend:
+    desc: Format Go code
+    dir: "{{.BACKEND_DIR}}"
+    cmds:
+      - gofmt -w .
+
+  fmt:frontend:
+    desc: Format frontend (prettier)
+    dir: "{{.FRONTEND_DIR}}"
+    cmds:
+      - npx prettier --write .
+
+  fmt:
+    desc: Format everything
+    cmds:
+      - task fmt:backend
+      - task fmt:frontend
+
+  # ============================================================
+  # DEPENDENCIES
+  # ============================================================
+
+  install:
+    desc: Install all dependencies
+    cmds:
+      - cd frontend && npm install
+      - cd backend && go mod tidy
+
+  deps:update:
+    desc: Update Go dependencies
+    dir: "{{.BACKEND_DIR}}"
+    cmds:
+      - go get -u ./...
+      - go mod tidy
+
+  # ============================================================
+  # DATABASE (future tern)
+  # ============================================================
+
+  migrate:up:
+    desc: Run database migrations
+    dir: "{{.BACKEND_DIR}}"
+    cmds:
+      - tern migrate
+
+  migrate:down:
+    desc: Rollback migrations
+    dir: "{{.BACKEND_DIR}}"
+    cmds:
+      - tern rollback
+
+  migrate:new:
+    desc: Create new migration
+    dir: "{{.BACKEND_DIR}}"
+    cmds:
+      - tern new {{.CLI_ARGS}}
+
+  # usage:
+  # task migrate:new -- create_users_table
+
+  # ============================================================
+  # OPENAPI / SWAGGER
+  # ============================================================
+
+  docs:
+    desc: Generate Swagger docs
+    dir: "{{.BACKEND_DIR}}"
+    cmds:
+      - swag init -g cmd/api/main.go
+
+  docs:serve:
+    desc: Open Swagger docs locally
+    cmds:
+      - open http://localhost:8080/swagger/index.html
+
+  # ============================================================
+  # CLEANUP
+  # ============================================================
+
+  clean:
+    desc: Remove generated files
+    cmds:
+      - rm -rf frontend/dist
+      - rm -rf backend/bin
+      - rm -rf backend/tmp
+
+  # ============================================================
+  # DOCKER (future)
+  # ============================================================
+
+  docker:up:
+    desc: Start docker containers
+    cmds:
+      - docker compose up --build
+
+  docker:down:
+    desc: Stop docker containers
+    cmds:
+      - docker compose down
+
+  # ============================================================
+  # QUICK HELP
+  # ============================================================
+
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list

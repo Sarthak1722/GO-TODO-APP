@@ -1,17 +1,17 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "This is a production-grade Todo API built with Go and Fiber.",
-        "title": "Go Todo API",
+        "description": "A small authenticated todo API built with Go and Fiber.",
+        "title": "Simple Todo API",
         "contact": {},
         "version": "1.0"
     },
-    "host": "localhost:3000",
+    "host": "localhost:8080",
     "basePath": "/api",
     "paths": {
         "/todos": {
             "get": {
-                "description": "Returns a list of all todos in the database",
+                "description": "Returns a list of all todos in the database for the authenticated user",
                 "produces": [
                     "application/json"
                 ],
@@ -29,6 +29,12 @@
                             }
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -38,7 +44,7 @@
                 }
             },
             "post": {
-                "description": "Adds a new todo to the in-memory/postgres database",
+                "description": "Adds a new todo to the database",
                 "consumes": [
                     "application/json"
                 ],
@@ -69,6 +75,12 @@
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/utils.ErrorResponse"
                         }
@@ -114,6 +126,12 @@
                             "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -149,6 +167,12 @@
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/utils.ErrorResponse"
                         }
@@ -193,7 +217,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.Todo"
+                            "$ref": "#/definitions/dto.PatchTodoRequest"
                         }
                     }
                 ],
@@ -206,6 +230,12 @@
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/utils.ErrorResponse"
                         }
@@ -237,6 +267,17 @@
                     "type": "string",
                     "maxLength": 100,
                     "minLength": 3
+                },
+                "completed": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "dto.PatchTodoRequest": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
                 },
                 "completed": {
                     "type": "boolean"

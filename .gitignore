@@ -6,6 +6,7 @@ backend/.env
 backend/api
 backend/tmp/
 backend/air.toml
+backend/bin
 
 
 # frontend

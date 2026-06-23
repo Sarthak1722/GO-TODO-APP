@@ -17,6 +17,7 @@ import (
 	"github.com/clerk/clerk-sdk-go/v2"
 	swaggo "github.com/gofiber/contrib/v3/swaggo"
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/static"
 	"github.com/joho/godotenv"
 )
@@ -25,7 +26,7 @@ import (
 // @title Simple Todo API
 // @version 1.0
 // @description A small authenticated todo API built with Go and Fiber.
-// @host localhost:3000
+// @host localhost:8080
 // @BasePath /api
 func main() {
 	// load .env
@@ -86,8 +87,14 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "3000"
+		port = "8080"
 	}
+	// Initialize cors config
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: []string{"http://localhost:5173"},
+		AllowMethods: []string{"GET","POST","PUT","PATCH","DELETE"},
+		AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization"},
+	}))
 
 	// Middleware
 	app.Use(middleware.GetRequestID())

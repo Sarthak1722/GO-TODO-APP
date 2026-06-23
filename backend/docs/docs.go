@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/todos": {
             "get": {
-                "description": "Returns a list of all todos in the database",
+                "description": "Returns a list of all todos in the database for the authenticated user",
                 "produces": [
                     "application/json"
                 ],
@@ -35,6 +35,12 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -44,7 +50,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Adds a new todo to the in-memory/postgres database",
+                "description": "Adds a new todo to the database",
                 "consumes": [
                     "application/json"
                 ],
@@ -75,6 +81,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/utils.ErrorResponse"
                         }
@@ -120,6 +132,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -155,6 +173,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/utils.ErrorResponse"
                         }
@@ -199,7 +223,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.Todo"
+                            "$ref": "#/definitions/dto.PatchTodoRequest"
                         }
                     }
                 ],
@@ -212,6 +236,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/utils.ErrorResponse"
                         }
@@ -243,6 +273,17 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 100,
                     "minLength": 3
+                },
+                "completed": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "dto.PatchTodoRequest": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
                 },
                 "completed": {
                     "type": "boolean"
@@ -284,11 +325,11 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:3000",
+	Host:             "localhost:8080",
 	BasePath:         "/api",
 	Schemes:          []string{},
-	Title:            "Go Todo API",
-	Description:      "This is a production-grade Todo API built with Go and Fiber.",
+	Title:            "Simple Todo API",
+	Description:      "A small authenticated todo API built with Go and Fiber.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",
